@@ -1,0 +1,464 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <title>гайд по циклу</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #fff0f5;
+      margin: 0; padding: 0;
+      color: #2d0202;
+    }
+    h1 {
+      text-align: center;
+      margin: 15px 0;
+    }
+    .container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding: 20px;
+      justify-content: center;
+    }
+    .calendar td.ovulation-peak {
+  background-color: #4da6ff; /* ярче голубой */
+  color: #ffffff;
+  font-weight: bold;
+}
+
+    .calendar, .info {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 40px 12px rgba(0,0,0,0.1);
+      padding: 20px;
+      flex: 1 1 320px;
+      max-width: 420px;
+      min-width: 300px;
+    }
+    .calendar table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: center;
+      user-select: none;
+    }
+    .calendar th {
+      padding: 8px 0;
+      background: #ffd3e2;
+      color: #b3003b;
+    }
+    .calendar td {
+      padding: 10px 5px;
+      border-radius: 50%;
+      cursor: default;
+      transition: background-color 0.3s ease;
+      position: relative;
+    }
+    .calendar td.today {
+      border: 2px solid #b3003b;
+      font-weight: bold;
+    }
+    .calendar td.menstrual {
+      background-color: #ffb3c1;
+      color: #660014;
+    }
+    .calendar td.ovulation {
+      background-color: #b3d9ff;
+      color: #003366;
+    }
+    .calendar td.pms {
+      background-color: #fff3b3;
+      color: #665500;
+    }
+    .legend {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 10px;
+      font-size: 0.9em;
+    }
+    .legend span {
+      display: inline-block;
+      width: 16px;
+      height: 16px;
+      margin-right: 6px;
+      border-radius: 50%;
+      vertical-align: middle;
+    }
+    .legend .menstrual { background: #ffb3c1; }
+    .legend .ovulation { background: #b3d9ff; }
+    .legend .pms { background: #fff3b3; }
+
+    .advice {
+      font-size: 1.1em;
+      margin-top: 15px;
+      min-height: 60px;
+      opacity: 0;
+      transition: opacity 1s ease;
+    }
+    .advice.show {
+      opacity: 1;
+    }
+    .always-visible {
+      background: #ffe4e8;
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 20px;
+      box-shadow: inset 0 0 8px #ff9eb1;
+      color: #4a0022;
+      font-weight: 600;
+      user-select: none;
+    }
+    #settingsSection {
+      background: #fff5f9;
+      border-radius: 12px;
+      padding: 15px;
+      box-shadow: inset 0 0 12px #ffa6be;
+      margin-bottom: 20px;
+      display: none;
+    }
+    #settingsSection input[type=date],
+    #settingsSection input[type=number] {
+      padding: 6px;
+      margin: 6px 0 12px 0;
+      width: 100%;
+      box-sizing: border-box;
+      font-size: 1em;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    #settingsSection button {
+      background: #b3003b;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      font-size: 1em;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+    #settingsSection button:hover {
+      background: #7f0027;
+    }
+    #dateList {
+      max-height: 100px;
+      overflow-y: auto;
+      margin-top: 10px;
+      padding-left: 20px;
+      color: #660014;
+    }
+    @media (max-width: 768px) {
+      .container {
+        flex-direction: column;
+        padding: 15px;
+      }
+      .calendar td.ovulation-peak {
+        background-color: #4da6ff; /* ярче голубой */
+        color: #ffffff;
+        font-weight: bold;
+      }
+      .calendar td.ovulation {
+        background-color: #b3d9ff; /* пастельный */
+        color: #003366;
+      }
+      .legend .ovulation { background: #b3d9ff; }
+    }
+  </style>
+</head>
+<body>
+  <h1>гайд по циклу</h1>
+  <div style="text-align:center; margin-bottom: 10px;">
+    <button onclick="enterPassword()">вход в режим настройки</button>
+  </div>
+  <div id="settingsSection">
+    <!-- Убрал дублирование <div id="settingsSection"> -->
+    <label>Длина цикла (дней):
+      <input type="number" id="cycleLength" min="20" max="45" />
+    </label>
+    <label>Длительность менструации (дней):
+      <input type="number" id="periodLength" min="1" max="10" />
+    </label>
+    <label>Длительность овуляции (дней):
+      <input type="number" id="ovulationLength" min="3" max="10" />
+    </label>
+    <label>Добавить первый день последней менструации:
+      <input type="date" id="newDate" />
+      <button onclick="addDate()">Добавить</button>
+    </label>
+    <div id="dateList"></div>
+    <button onclick="saveSettings()">Сохранить настройки</button>
+  </div>
+  <div class="container">
+    <div class="calendar">
+      <table id="calendarTable">
+        <thead>
+          <tr>
+            <th>Пн</th><th>Вт</th><th>Ср</th><th>Чт</th><th>Пт</th><th>Сб</th><th>Вс</th>
+          </tr>
+        </thead>
+        <tbody id="calendarBody"></tbody>
+      </table>
+      <div class="legend">
+        <span class="menstrual"></span> Менструация
+        <span class="ovulation" style="margin-left:15px"></span> Овуляция
+        <span class="pms" style="margin-left:15px"></span> ПМС
+      </div>
+    </div>
+    <div class="info">
+      <h2>Совет на сегодня</h2>
+      <div id="adviceText" class="advice"></div>
+      
+      <!-- Ссылка вместо блока "Что можно / нельзя" -->
+      <div class="always-visible" style="text-align:center; padding: 20px; background: #ffe4e8; border-radius: 12px; box-shadow: inset 0 0 8px #ff9eb1; margin-top: 20px;">
+        <a href="details.html" style="text-decoration: none; color: #b3003b; font-weight: 700; font-size: 1.2em;">
+          Подробнее о том, что можно и нельзя делать в разные фазы цикла →
+        </a>
+      </div>
+    
+      <!-- Милая гифка под ссылкой -->
+      <div style="text-align:center; margin-top: 15px;">
+  
+        <img src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExd254amVuaWo3NW9jajRtMHc4OTNvdGg4bjZvdmo4bm5nMWQwMDZlcCZlcD12MV9naWZzX3NlYXJjaCZjdD1n/5jCTUWzwtqG2s/giphy.gif" alt="Cute cat gif" width="300" style="border-radius: 12px; box-shadow: 0 4px 10px rgba(179, 0, 59, 0.3);" />
+      </div>
+    </div>
+  </div>
+  <script>
+    let dates = [];
+    let cycleLength = 28;
+    let periodLength = 5;
+    let ovulationLength = 6;
+
+    const tips = {
+      menstrual: [
+        "Молчи, обнимай и не задавай лишних вопросов.",
+        " Не паникуй, если я грустная или немного отдаляюсь , мне просто грустно.",
+        "Не обсуждай сейчас внешность, вес или логику. Обнимай и не задавай лишних вопросов.",
+        "Напоминай пожалуйста :Ты классная и вообще супер. Всё будет хорошо.",
+        "Не шути пошло, я скорее взбешусь чем обрадуюсь. ",
+        "Не забывай спрашивать как я в течение дня( ну типо проявлять заботу) "
+      ],
+      follicular: [
+        "Отличное время для совместных прогулок и разговоров.",
+        "Я полна энергии - можешь предложить что-нибудь активное.",
+        "Будь внимателен к моим планам и настроению.",
+        "Можно АККУРАТНО плохо(пошло) шутить и смотреть реакцию.",
+        "Комплименты одобряются и даже ожидаются)"
+      ],
+      ovulation: [
+        "Максимум энергии и настроения - комплименты требуются!",
+        "Можно планировать романтические сюрпризы.",
+        "Будь уверен и открыт в общении.",
+        "В это время есть вероятность подкатов и намеков от меня - можно и даже нужно поддержать настроение!!"
+      ],
+      luteal: [
+        "Возможна чувствительность — поддерживай меня и проявляй заботу.",
+        "Помоги ей расслабиться и отдохнуть.",
+        "В это время я более грустная и более склонна к философским вопросам , поэтому стоит быть аккуратным.",
+        "Если тебе тоже грустно или ты хочешь побыть один лучше скажи об этом мне , чтобы я не надумывала попусту."
+      ],
+      pms: [
+        "Лучше не спорить и принести шоколадку.",
+        "Будь терпелив и внимателен.",
+        "Не задавай сложных вопросов.",
+        "Если я начинаю загоняться — мягко переключай внимание.",
+        "Обними крепко и скажи, что всё будет хорошо."
+      ]
+    };
+
+    function getTodayDate() {
+      let d = new Date();
+      d.setHours(0,0,0,0);
+      return d;
+    }
+
+    // Загрузка настроек из localStorage
+    function loadSettings() {
+      let s = localStorage.getItem('cycleSettings');
+      if(s) {
+        let obj = JSON.parse(s);
+        cycleLength = obj.cycleLength || 28;
+        periodLength = obj.periodLength || 5;
+        ovulationLength = obj.ovulationLength || 6;
+        dates = obj.dates || [];
+      }
+      // Установить значения в инпутах настройки
+      document.getElementById('cycleLength').value = cycleLength;
+      document.getElementById('periodLength').value = periodLength;
+      document.getElementById('ovulationLength').value = ovulationLength;
+      renderDateList();
+    }
+
+    // Сохранение настроек в localStorage
+    function saveSettings() {
+      cycleLength = parseInt(document.getElementById('cycleLength').value) || 28;
+      periodLength = parseInt(document.getElementById('periodLength').value) || 5;
+      ovulationLength = parseInt(document.getElementById('ovulationLength').value) || 6;
+      // Убрать дублирующиеся даты и отсортировать
+      dates = Array.from(new Set(dates.map(d=>new Date(d).toISOString().slice(0,10)))); 
+      dates = dates.map(d=>new Date(d));
+      dates.sort((a,b) => a - b);
+      localStorage.setItem('cycleSettings', JSON.stringify({cycleLength, periodLength, ovulationLength, dates}));
+      alert("Настройки сохранены");
+      renderCalendar();
+      renderDateList();
+    }
+
+    // Добавить дату начала последней менструации
+    function addDate() {
+      let newDate = document.getElementById('newDate').value;
+      if(!newDate) {
+        alert("Выберите дату");
+        return;
+      }
+      if(!dates.includes(newDate)) {
+        dates.push(newDate);
+        // Преобразуем в даты и сортируем
+        dates = dates.map(d => new Date(d));
+        dates.sort((a,b) => a - b);
+        renderDateList();
+        document.getElementById('newDate').value = "";
+      } else {
+        alert("Такая дата уже есть");
+      }
+    }
+
+    function renderDateList() {
+      let div = document.getElementById('dateList');
+      if(dates.length === 0) {
+        div.innerHTML = "Дата не добавлена";
+        return;
+      }
+      div.innerHTML = "Добавленные даты:<br>" + dates.map(d=>{
+        if(typeof d === 'string') return d;
+        if(d instanceof Date) return d.toISOString().slice(0,10);
+        return d;
+      }).join("<br>");
+    }
+
+    // Вычислить фазу цикла для даты
+    function getPhase(date) {
+  if(dates.length === 0) return null;
+  let d = new Date(date);
+  d.setHours(0,0,0,0);
+  // Найти ближайшую дату последней менструации не позже текущей
+  let lastDate = null;
+  for(let i=dates.length-1; i>=0; i--) {
+    let start = new Date(dates[i]);
+    start.setHours(0,0,0,0);
+    if(start <= d) {
+      lastDate = start;
+      break;
+    }
+  }
+  if(!lastDate) return null;
+
+  let diffDays = Math.floor((d - lastDate) / (1000*3600*24));
+  let dayInCycle = (diffDays % cycleLength) + 1;
+
+  if(dayInCycle <= periodLength) return 'menstrual'; // Менструация
+
+  // Овуляция: пиковый день — 16-й, ярко-голубой (ovulation-peak)
+  // + 4 дня до (дни 12,13,14,15) и 2 дня после (17,18) — овуляция светло-голубая (ovulation)
+  if(dayInCycle >= 12 && dayInCycle <= 18) {
+    if(dayInCycle === 16) return 'ovulation-peak';
+    return 'ovulation';
+  }
+
+  if(dayInCycle >= cycleLength - 4) return 'pms'; // PMS последние 5 дней цикла
+
+  return 'follicular'; // Остальные дни
+}
+
+
+    // Получить совет по фазе
+    function getAdvice(phase) {
+      if(!phase) return "Добавьте дату начала последней менструации в настройках.";
+      let arr = tips[phase];
+      if(!arr) return "";
+      let idx = Math.floor(Math.random() * arr.length);
+      return arr[idx];
+    }
+
+    // Отобразить календарь текущего месяца с выделением фаз
+    function renderCalendar() {
+      let today = getTodayDate();
+      let year = today.getFullYear();
+      let month = today.getMonth();
+
+      let firstDay = new Date(year, month, 1);
+      let lastDay = new Date(year, month+1, 0);
+      let daysInMonth = lastDay.getDate();
+
+      let startWeekday = firstDay.getDay();
+      if(startWeekday === 0) startWeekday = 7; // Воскресенье считать 7
+
+      let tbody = document.getElementById('calendarBody');
+      tbody.innerHTML = "";
+
+      let row = document.createElement('tr');
+      // Заполнить пустые ячейки перед первым днём месяца
+      for(let i=1; i < startWeekday; i++) {
+        let cell = document.createElement('td');
+        cell.textContent = "";
+        row.appendChild(cell);
+      }
+
+      for(let day=1; day <= daysInMonth; day++) {
+        if(row.children.length === 7) {
+          tbody.appendChild(row);
+          row = document.createElement('tr');
+        }
+        let cell = document.createElement('td');
+        cell.textContent = day;
+
+        let cellDate = new Date(year, month, day);
+        let phase = getPhase(cellDate);
+        if(phase) {
+          cell.classList.add(phase);
+        }
+        if(cellDate.getTime() === today.getTime()) {
+          cell.classList.add('today');
+        }
+        row.appendChild(cell);
+      }
+      // Заполнить пустые ячейки в конце месяца
+      while(row.children.length < 7) {
+        let cell = document.createElement('td');
+        cell.textContent = "";
+        row.appendChild(cell);
+      }
+      tbody.appendChild(row);
+    }
+
+    function enterPassword() {
+      let pw = prompt("Введите пароль:");
+      if(pw === "мяумяу") {
+        document.getElementById('settingsSection').style.display = "block";
+      } else {
+        alert("Неверный пароль");
+      }
+    }
+
+    // Отобразить совет и анимацию
+    function showAdvice() {
+      let today = getTodayDate();
+      let phase = getPhase(today);
+      let advice = getAdvice(phase);
+      let advElem = document.getElementById('adviceText');
+      advElem.classList.remove('show');
+      setTimeout(() => {
+        advElem.textContent = advice;
+        advElem.classList.add('show');
+      }, 300);
+    }
+
+    // Инициализация
+    loadSettings();
+    renderCalendar();
+    showAdvice();
+
+    // Автоматическое обновление совета каждый час (например)
+    setInterval(showAdvice, 3600000);
+  </script>
+</body>
+</html>
